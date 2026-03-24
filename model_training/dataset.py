@@ -5,6 +5,8 @@ import h5py
 import numpy as np
 from torch.nn.utils.rnn import pad_sequence
 import math 
+from reduced_utils import INDEX_REMAP #added for phoneme reduction
+
 
 class BrainToTextDataset(Dataset):
     '''
@@ -133,7 +135,12 @@ class BrainToTextDataset(Dataset):
 
                         batch['input_features'].append(input_features)
 
-                        batch['seq_class_ids'].append(torch.from_numpy(g['seq_class_ids'][:]))  # phoneme labels
+                        # batch['seq_class_ids'].append(torch.from_numpy(g['seq_class_ids'][:]))  # phoneme labels
+                        #phoneme reduction:
+                        seq_class_ids = torch.from_numpy(g['seq_class_ids'][:])
+                        seq_class_ids = INDEX_REMAP[seq_class_ids]  
+                        batch['seq_class_ids'].append(seq_class_ids)
+
                         batch['transcriptions'].append(torch.from_numpy(g['transcription'][:])) # character level transcriptions
                         batch['n_time_steps'].append(g.attrs['n_time_steps']) # number of time steps in the trial - required since we are padding
                         batch['phone_seq_lens'].append(g.attrs['seq_len']) # number of phonemes in the label - required since we are padding
