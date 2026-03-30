@@ -1,3 +1,5 @@
+import torch
+import re
 
 #----------PHONEME REDUCTION UTILS-----------
 #these will be used in the data retrieval file to get change the phonemes to their new classes !
