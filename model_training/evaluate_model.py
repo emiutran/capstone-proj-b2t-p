@@ -259,8 +259,10 @@ with tqdm(total=total_test_trials, desc='Running remote language model', unit='t
         for trial in range(len(test_data[session]['logits'])):
             trial_lm_start = time.time()
             
-            # get trial logits and rearrange them for the LM
-            logits = rearrange_speech_logits_pt(test_data[session]['logits'][trial])[0]
+            # Expand reduced logits back to the 41-class inventory expected by the LM,
+            # then rearrange from [BLANK, phones..., SIL] to [BLANK, SIL, phones...].
+            logits_41 = expand_logits_for_41_class_lm(test_data[session]['logits'][trial])
+            logits = rearrange_speech_logits_pt(logits_41)[0]
 
             # reset language model
             remote_lm_done_resetting_lastEntrySeen = reset_remote_language_model(r, remote_lm_done_resetting_lastEntrySeen)

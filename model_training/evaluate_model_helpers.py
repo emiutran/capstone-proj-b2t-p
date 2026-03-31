@@ -32,6 +32,25 @@ LOGIT_TO_PHONEME = [
     ' | ', 
 ]
 
+# Original 41-class inventory expected by the standalone language model.
+OLD_LOGIT_TO_PHONEME = [
+    'BLANK',
+    'AA', 'AE', 'AH', 'AO', 'AW',
+    'AY', 'B', 'CH', 'D', 'DH',
+    'EH', 'ER', 'EY', 'F', 'G',
+    'HH', 'IH', 'IY', 'JH', 'K',
+    'L', 'M', 'N', 'NG', 'OW',
+    'OY', 'P', 'R', 'S', 'SH',
+    'T', 'TH', 'UH', 'UW', 'V',
+    'W', 'Y', 'Z', 'ZH',
+    ' | ',
+]
+
+_REDUCED_TO_OLD_INDEX = np.array(
+    [OLD_LOGIT_TO_PHONEME.index(p) for p in LOGIT_TO_PHONEME],
+    dtype=np.int64,
+)
+
 # #----------PHONEME REDUCTION UTILS-----------
 # #these will be used in the data retrieval file to get change the phonemes to their new classes !
 
@@ -166,6 +185,33 @@ def rearrange_speech_logits_pt(logits):
     # rearrange so the order is [BLANK, SIL, phonemes...]
     logits = np.concatenate((logits[:, :, 0:1], logits[:, :, -1:], logits[:, :, 1:-1]), axis=-1)
     return logits
+
+
+def expand_logits_for_41_class_lm(logits, null_logit=-30.0):
+    """Expand reduced-class logits to the original 41-class inventory for LM decoding.
+
+    Args:
+        logits: Numpy array with shape (..., 34).
+        null_logit: Logit value used for phoneme classes removed during reduction.
+
+    Returns:
+        Numpy array with shape (..., 41).
+    """
+    expected_reduced_classes = len(LOGIT_TO_PHONEME)
+    expected_old_classes = len(OLD_LOGIT_TO_PHONEME)
+
+    if logits.shape[-1] != expected_reduced_classes:
+        raise ValueError(
+            f"Expected reduced logits with last dim {expected_reduced_classes}, got {logits.shape[-1]}"
+        )
+
+    expanded = np.full(
+        (*logits.shape[:-1], expected_old_classes),
+        fill_value=np.float32(null_logit),
+        dtype=np.float32,
+    )
+    expanded[..., _REDUCED_TO_OLD_INDEX] = logits.astype(np.float32)
+    return expanded
 
 # single decoding step function.
 # smooths data and puts it through the model.
