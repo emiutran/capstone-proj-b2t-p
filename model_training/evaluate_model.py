@@ -214,7 +214,7 @@ for session, data in test_data.items():
         if eval_type == 'val':
             sentence_label = data['sentence_label'][trial]
             true_seq = data['seq_class_ids'][trial][0:data['seq_len'][trial]]
-            true_seq = [LOGIT_TO_PHONEME[p] for p in true_seq]
+            true_seq = [OLD_LOGIT_TO_PHONEME[int(p)] for p in true_seq]
 
             print(f'Sentence label:      {sentence_label}')
             print(f'True sequence:       {" ".join(true_seq)}')
