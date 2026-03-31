@@ -51,6 +51,26 @@ _REDUCED_TO_OLD_INDEX = np.array(
     dtype=np.int64,
 )
 
+# Reduced inventory merges these original classes into canonical targets.
+_OLD_TO_CANONICAL = {
+    'AO': 'AA',
+    'ER': 'AH',
+    'DH': 'TH',
+    'IH': 'IY',
+    'UH': 'UW',
+    'Z': 'S',
+    'ZH': 'SH',
+}
+
+_PHONEME_TO_REDUCED_INDEX = {p: i for i, p in enumerate(LOGIT_TO_PHONEME)}
+_OLD_TO_REDUCED_INDEX = np.array(
+    [
+        _PHONEME_TO_REDUCED_INDEX[_OLD_TO_CANONICAL.get(old_p, old_p)]
+        for old_p in OLD_LOGIT_TO_PHONEME
+    ],
+    dtype=np.int64,
+)
+
 # #----------PHONEME REDUCTION UTILS-----------
 # #these will be used in the data retrieval file to get change the phonemes to their new classes !
 
@@ -205,12 +225,21 @@ def expand_logits_for_41_class_lm(logits, null_logit=-30.0):
             f"Expected reduced logits with last dim {expected_reduced_classes}, got {logits.shape[-1]}"
         )
 
-    expanded = np.full(
-        (*logits.shape[:-1], expected_old_classes),
-        fill_value=np.float32(null_logit),
-        dtype=np.float32,
-    )
-    expanded[..., _REDUCED_TO_OLD_INDEX] = logits.astype(np.float32)
+    reduced_logits = logits.astype(np.float32)
+
+    # Copy each reduced class back to every original index that maps to it
+    # (e.g., TH -> {TH, DH}, SH -> {SH, ZH}, etc.).
+    expanded = reduced_logits[..., _OLD_TO_REDUCED_INDEX]
+
+    # Keep behavior stable if caller passes malformed mapping/config in future.
+    if expanded.shape[-1] != expected_old_classes:
+        expanded = np.full(
+            (*logits.shape[:-1], expected_old_classes),
+            fill_value=np.float32(null_logit),
+            dtype=np.float32,
+        )
+        expanded[..., _REDUCED_TO_OLD_INDEX] = reduced_logits
+
     return expanded
 
 # single decoding step function.
